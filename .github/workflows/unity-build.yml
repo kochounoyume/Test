@@ -19,8 +19,28 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Cache Library
+      - name: Cache Library (GitHub)
+        if: runner.environment == 'github-hosted'
         uses: actions/cache@v5
+        with:
+          path: Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-${{ runner.os }}-
+
+      - name: Cache Library (RustFS)
+        if: runner.environment == 'self-hosted'
+        # Pin the RunsOn v5 branch to a verified commit.
+        uses: runs-on/cache@88d90644011a3a9957fd141a106f5a94f9794203
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.RUSTFS_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.RUSTFS_CACHE_SECRET_KEY }}
+          AWS_REGION: us-east-1
+          AWS_DEFAULT_REGION: us-east-1
+          RUNS_ON_RUNNER_NAME: ""
+          RUNS_ON_S3_BUCKET_CACHE: github-actions-cache
+          RUNS_ON_S3_BUCKET_ENDPOINT: http://127.0.0.1:9000
+          RUNS_ON_S3_FORCE_PATH_STYLE: "true"
         with:
           path: Library
           key: Library-${{ runner.os }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
