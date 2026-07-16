@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     name: Unity Build
-    runs-on: ${{ format('{0}', github.event.inputs.use_self_hosted) == 'true' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ fromJSON(inputs.use_self_hosted && '["self-hosted","Linux","X64","gameci-linux"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout
