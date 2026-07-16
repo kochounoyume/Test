@@ -2,11 +2,16 @@ name: unity-build
 
 on:
   workflow_dispatch:
+      inputs:
+        use_self_hosted:
+          required: true
+          default: false
+          type: boolean
 
 jobs:
   build:
     name: Unity Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.use_self_hosted && '["self-hosted","Linux","X64","gameci-linux"]' || '["ubuntu-latest"]') }}
 
     steps:
       - name: Checkout
@@ -14,8 +19,28 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Cache Library
+      - name: Cache Library (GitHub)
+        if: runner.environment == 'github-hosted'
         uses: actions/cache@v5
+        with:
+          path: Library
+          key: Library-${{ runner.os }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            Library-${{ runner.os }}-
+
+      - name: Cache Library (RustFS)
+        if: runner.environment == 'self-hosted'
+        # Pin the RunsOn v5 branch to a verified commit.
+        uses: runs-on/cache@88d90644011a3a9957fd141a106f5a94f9794203
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.RUSTFS_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.RUSTFS_CACHE_SECRET_KEY }}
+          AWS_REGION: us-east-1
+          AWS_DEFAULT_REGION: us-east-1
+          RUNS_ON_RUNNER_NAME: ""
+          RUNS_ON_S3_BUCKET_CACHE: github-actions-cache
+          RUNS_ON_S3_BUCKET_ENDPOINT: http://127.0.0.1:9000
+          RUNS_ON_S3_FORCE_PATH_STYLE: "true"
         with:
           path: Library
           key: Library-${{ runner.os }}-${{ hashFiles('Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}
@@ -30,6 +55,13 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: StandaloneWindows64
+          # Keep Unity inside the GameCI container while mapping its process
+          # user to the persistent self-hosted runner workspace owner.
+          runAsHostUser: ${{ runner.environment == 'self-hosted' }}
+          # Semantic versioning invokes `sh`, which is not available on a
+          # default Windows runner PATH. This build does not require Git-based
+          # automatic versioning, so keep the workflow shell-independent.
+          versioning: None
 
       - name: Upload Build
         uses: actions/upload-artifact@v7
