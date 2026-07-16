@@ -35,6 +35,10 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: StandaloneWindows64
+          # Semantic versioning invokes `sh`, which is not available on a
+          # default Windows runner PATH. This build does not require Git-based
+          # automatic versioning, so keep the workflow shell-independent.
+          versioning: None
 
       - name: Upload Build
         uses: actions/upload-artifact@v7
